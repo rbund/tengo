@@ -1,6 +1,10 @@
 package compiler
 
 import (
+  "strings"
+  "path/filepath"
+  "io/ioutil"
+  
 	"github.com/d5/tengo/compiler/ast"
 	"github.com/d5/tengo/compiler/parser"
 	"github.com/d5/tengo/objects"
@@ -14,6 +18,31 @@ func (c *Compiler) checkCyclicImports(node ast.Node, modulePath string) error {
 	}
 
 	return nil
+}
+
+// rbund added, extracted from Compiler.Compile() (compiler.go)
+func (c *Compiler) importModule(node *ast.ImportExpr) (*objects.CompiledFunction, error) {
+  if c.allowFileImport {
+    moduleName := node.ModuleName
+    if !strings.HasSuffix(moduleName, ".tengo") {
+      moduleName += ".tengo"
+    }
+
+    modulePath, err := filepath.Abs(moduleName)
+    if err != nil {
+      return nil, c.errorf(node, "module file path error: %s", err.Error())
+    }
+    if err := c.checkCyclicImports(node, modulePath); err != nil {
+      return nil, err
+    }
+    // loading source:
+    moduleSrc, err := ioutil.ReadFile(moduleName)
+    if err != nil {
+      return nil, c.errorf(node, "module file read error: %s", err.Error())
+    }
+    return c.compileModule(node, moduleName, modulePath, moduleSrc)
+  }
+  return nil, c.errorf(node, "module '%s' not found", node.ModuleName)
 }
 
 func (c *Compiler) compileModule(node ast.Node, moduleName, modulePath string, src []byte) (*objects.CompiledFunction, error) {

@@ -3,10 +3,10 @@ package compiler
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
-	"path/filepath"
+	//"io/ioutil"
+	//"path/filepath"
 	"reflect"
-	"strings"
+	//"strings"
 
 	"github.com/d5/tengo"
 	"github.com/d5/tengo/compiler/ast"
@@ -540,7 +540,17 @@ func (c *Compiler) Compile(node ast.Node) error {
 			default:
 				panic(fmt.Errorf("invalid import value type: %T", v))
 			}
-		} else if c.allowFileImport {
+		} else {
+      compiled, err := c.importModule(node)
+      if err != nil {
+        return err
+      }
+			c.emit(node, OpConstant, c.addConstant(compiled))
+			c.emit(node, OpCall, 0)
+    }
+    
+    /* old:
+      else if c.allowFileImport {
 			moduleName := node.ModuleName
 			if !strings.HasSuffix(moduleName, ".tengo") {
 				moduleName += ".tengo"
@@ -569,7 +579,7 @@ func (c *Compiler) Compile(node ast.Node) error {
 		} else {
 			return c.errorf(node, "module '%s' not found", node.ModuleName)
 		}
-
+    */
 	case *ast.ExportStmt:
 		// export statement must be in top-level scope
 		if c.scopeIndex != 0 {
