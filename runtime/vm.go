@@ -67,22 +67,9 @@ func NewVM(bytecode *compiler.Bytecode, globals []objects.Object, maxAllocs int6
 func (v *VM) Abort() {
 	atomic.StoreInt64(&v.aborting, 1)
 }
-
-// Run starts the execution.
-func (v *VM) Run() (err error) {
-	// reset VM states
-	v.sp = 0
-	v.curFrame = &(v.frames[0])
-	v.curInsts = v.curFrame.fn.Instructions
-	v.framesIndex = 1
-	v.ip = -1
-	v.allocs = v.maxAllocs + 1
-
-	v.run()
-
-	atomic.StoreInt64(&v.aborting, 0)
-
-	err = v.err
+// Returns VM's error if any.
+func (v VM) GetError() error {
+	err := v.err
 	if err != nil {
 		filePos := v.fileSet.Position(v.curFrame.fn.SourcePos(v.ip - 1))
 		err = fmt.Errorf("Runtime Error: %s\n\tat %s", err.Error(), filePos)
@@ -95,8 +82,24 @@ func (v *VM) Run() (err error) {
 		}
 		return err
 	}
-
 	return nil
+}
+// Resets the VM.
+func (v *VM) Reset() {
+	v.sp = 0
+	v.curFrame = &(v.frames[0])
+	v.curInsts = v.curFrame.fn.Instructions
+	v.framesIndex = 1
+	v.ip = -1
+	v.allocs = v.maxAllocs + 1
+}
+// Run starts the execution.
+func (v *VM) Run() error {
+	// reset VM states
+  v.Reset()
+	v.run()
+	atomic.StoreInt64(&v.aborting, 0)
+  return v.GetError()
 }
 
 func (v *VM) run() {
